@@ -45,7 +45,7 @@ class O:
             gen_ind = random.randint(0, len(self.genom) - 1)
             self.genom[gen_ind] = abs(self.genom[gen_ind] - 1)
 
-def crossover(o1, o2):
+def classic_crossover(o1, o2):
     cut_point_ind = random.randint(0, len(o1.genom) - 1)
     new1_gene = o1.genom[cut_point_ind:] + o2.genom[:cut_point_ind]
 
@@ -71,7 +71,6 @@ for i in range(population_size):
 
 print(EngFunc.value(512, 404.2319))
 
-turnir_size = 2
 steps = 10000
 counter = 0
 best_err = 99999
@@ -100,7 +99,6 @@ while best_err > okey_err and counter < steps:
             prop_tmp.append((population.index(el), el))
         r = random.random()
         if r < drob:
-            # prop_tmp.append(el)
             prop_tmp.append((population.index(el), el))
 
     f_parent = random.randint(0, len(prop_tmp) - 1)
@@ -108,7 +106,7 @@ while best_err > okey_err and counter < steps:
     while f_parent == s_parent:
         s_parent = random.randint(0, len(prop_tmp) - 1)
 
-    new1, new2 = crossover(prop_tmp[f_parent][1], prop_tmp[s_parent][1])
+    new1, new2 = classic_crossover(prop_tmp[f_parent][1], prop_tmp[s_parent][1])
     new1.mutate()
     new2.mutate()
     n1xy = new1.value_as_xy()
@@ -117,18 +115,18 @@ while best_err > okey_err and counter < steps:
     new2.cur_err = EngFunc.err(n2xy[0], n2xy[1])
     population[prop_tmp[f_parent][0]] = new1
     population[prop_tmp[s_parent][0]] = new2
-    # population.append(new1)
-    # population.append(new2)
 
     population.sort(key=lambda x : x.cur_err)
-
-    # population = population[:population_size]
 
     best_err = population[0].cur_err
     counter += 1
 
 print('-------')
 print('pop #' + str(counter), 'err: {:.3},'.format(population[0].cur_err), '{:.3}%'.format((population[0].cur_err/upper_border)* 100))
+print('true best value', EngFunc.value(512, 404.2319))
+best_o_x, best_o_y = population[0].value_as_xy()
+
+print('gene best value', EngFunc.value(best_o_x, best_o_y))
 
 plt.plot(err_arr)
 plt.show()
