@@ -59,74 +59,139 @@ def classic_crossover(o1, o2):
     res = [new1, new2]
     return res
 
-population_size = 100
-population = []
+def genitor_crossover(o1, o2):
+    cut_point_ind = random.randint(0, len(o1.genom) - 1)
 
-upper_border = 512
-genom_size = bin(upper_border)
-genom_size = len(genom_size) - 3
+    new = O(len(o1.genom))
 
-for i in range(population_size):
-    population.append(O(genom_size * 2))
+    o1_gene = o1.genom[:cut_point_ind]
+    o2_gene = o2.genom[cut_point_ind:]
 
-print(EngFunc.value(512, 404.2319))
+    new.genom = o1_gene + o2_gene
+    return new
 
-steps = 10000
-counter = 0
-best_err = 99999
-okey_err = upper_border / 100
-err_arr = []
-while best_err > okey_err and counter < steps:
-    for el in population:
-        x, y = el.value_as_xy()
-        el.cur_err = EngFunc.err(x, y)
-    population.sort(key=lambda x : x.cur_err)
-    if counter % 100 == 0:
-        err_arr.append(population[0].cur_err)
-        print('pop #' + str(counter), 'lowest err: {:.5}'.format(population[0].cur_err))
+err_arr_classic = []
+def classic():
+    population_size = 100
+    population = []
 
-    mean_prisp = 0
-    for el in population:
-        mean_prisp += el.cur_err
-    mean_prisp /= len(population)
+    upper_border = 512
+    genom_size = bin(upper_border)
+    genom_size = len(genom_size) - 3
 
-    prop_tmp = []
-    for el in population:
-        el_prisp = el.cur_err/mean_prisp
-        cel = int(el_prisp // mean_prisp)
-        drob = el_prisp % mean_prisp
-        for _ in range(cel):
-            prop_tmp.append((population.index(el), el))
-        r = random.random()
-        if r < drob:
-            prop_tmp.append((population.index(el), el))
+    for i in range(population_size):
+        population.append(O(genom_size * 2))
 
-    f_parent = random.randint(0, len(prop_tmp) - 1)
-    s_parent = random.randint(0, len(prop_tmp) - 1)
-    while f_parent == s_parent:
+    print(EngFunc.value(512, 404.2319))
+
+    steps = 10000
+    counter = 0
+    best_err = 99999
+    okey_err = upper_border / 100
+    while best_err > okey_err and counter < steps:
+        for el in population:
+            x, y = el.value_as_xy()
+            el.cur_err = EngFunc.err(x, y)
+        population.sort(key=lambda x : x.cur_err)
+        if counter % 100 == 0:
+            err_arr_classic.append(population[0].cur_err)
+            print('pop #' + str(counter), 'lowest err: {:.5}'.format(population[0].cur_err))
+
+        mean_prisp = 0
+        for el in population:
+            mean_prisp += el.cur_err
+        mean_prisp /= len(population)
+
+        prop_tmp = []
+        for el in population:
+            el_prisp = el.cur_err/mean_prisp
+            cel = int(el_prisp // mean_prisp)
+            drob = el_prisp % mean_prisp
+            for _ in range(cel):
+                prop_tmp.append((population.index(el), el))
+            r = random.random()
+            if r < drob:
+                prop_tmp.append((population.index(el), el))
+
+        f_parent = random.randint(0, len(prop_tmp) - 1)
         s_parent = random.randint(0, len(prop_tmp) - 1)
+        while f_parent == s_parent:
+            s_parent = random.randint(0, len(prop_tmp) - 1)
 
-    new1, new2 = classic_crossover(prop_tmp[f_parent][1], prop_tmp[s_parent][1])
-    new1.mutate()
-    new2.mutate()
-    n1xy = new1.value_as_xy()
-    new1.cur_err = EngFunc.err(n1xy[0], n1xy[1])
-    n2xy = new2.value_as_xy()
-    new2.cur_err = EngFunc.err(n2xy[0], n2xy[1])
-    population[prop_tmp[f_parent][0]] = new1
-    population[prop_tmp[s_parent][0]] = new2
+        new1, new2 = classic_crossover(prop_tmp[f_parent][1], prop_tmp[s_parent][1])
+        new1.mutate()
+        new2.mutate()
+        n1xy = new1.value_as_xy()
+        new1.cur_err = EngFunc.err(n1xy[0], n1xy[1])
+        n2xy = new2.value_as_xy()
+        new2.cur_err = EngFunc.err(n2xy[0], n2xy[1])
+        population[prop_tmp[f_parent][0]] = new1
+        population[prop_tmp[s_parent][0]] = new2
 
-    population.sort(key=lambda x : x.cur_err)
+        population.sort(key=lambda x : x.cur_err)
 
-    best_err = population[0].cur_err
-    counter += 1
+        best_err = population[0].cur_err
+        counter += 1
 
-print('-------')
-print('pop #' + str(counter), 'err: {:.3},'.format(population[0].cur_err), '{:.3}%'.format((population[0].cur_err/upper_border)* 100))
-print('true best value', EngFunc.value(512, 404.2319))
-best_o_x, best_o_y = population[0].value_as_xy()
+    print('-------')
+    print('pop #' + str(counter), 'err: {:.3},'.format(population[0].cur_err), '{:.3}%'.format((population[0].cur_err/upper_border)* 100))
+    print('true best value', EngFunc.value(512, 404.2319))
+    best_o_x, best_o_y = population[0].value_as_xy()
 
-print('gene best value', EngFunc.value(best_o_x, best_o_y))
+    print('gene best value', EngFunc.value(best_o_x, best_o_y))
 
-plt.plot(err_arr)
+
+err_arr_genitor = []
+def genitor():
+    population_size = 100
+    population = []
+
+    upper_border = 512
+    genom_size = bin(upper_border)
+    genom_size = len(genom_size) - 3
+
+    for i in range(population_size):
+        population.append(O(genom_size * 2))
+
+    print(EngFunc.value(512, 404.2319))
+
+    steps = 10000
+    counter = 0
+    best_err = 99999
+    okey_err = upper_border / 100
+    while best_err > okey_err and counter < steps:
+        for el in population:
+            x, y = el.value_as_xy()
+            el.cur_err = EngFunc.err(x, y)
+        population.sort(key=lambda x : x.cur_err)
+        if counter % 100 == 0:
+            err_arr_genitor.append(population[0].cur_err)
+            print('pop #' + str(counter), 'lowest err: {:.5}'.format(population[0].cur_err))
+
+        f_parent_ind = random.randint(0, len(population) - 1)
+        s_parent_ind = random.randint(0, len(population) - 1)
+
+        new_o = genitor_crossover(population[f_parent_ind], population[s_parent_ind])
+        new_o.mutate()
+        population.sort(key=lambda x : x.cur_err)
+
+        population[-1] = new_o
+
+        best_err = population[0].cur_err
+        counter += 1
+
+    print('-------')
+    print('pop #' + str(counter), 'err: {:.3},'.format(population[0].cur_err), '{:.3}%'.format((population[0].cur_err/upper_border)* 100))
+    print('true best value', EngFunc.value(512, 404.2319))
+    best_o_x, best_o_y = population[0].value_as_xy()
+
+    print('gene best value', EngFunc.value(best_o_x, best_o_y))
+
+
+
+classic()
+genitor()
+plt.plot(err_arr_classic, 'r-')
+# plt.show()
+plt.plot(err_arr_genitor, 'g-')
 plt.show()
