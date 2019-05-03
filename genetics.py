@@ -62,7 +62,7 @@ population_size = 100
 population = []
 
 upper_border = 512
-genom_size = bin(512)
+genom_size = bin(upper_border)
 genom_size = len(genom_size) - 3
 
 for i in range(population_size):
@@ -81,36 +81,44 @@ while best_err > okey_err and counter < steps:
         el.cur_err = EngFunc.err(x, y)
     population.sort(key=lambda x : x.cur_err)
     if counter % 100 == 0:
-        print('lowest err:', population[0].cur_err)
+        print('pop #' + str(counter), 'lowest err: {:.5}'.format(population[0].cur_err))
 
     turnir = []
-    while len(turnir) != len(population):
-        f_o = population[random.randint(0, len(population)-1)]
-        s_o = population[random.randint(0, len(population)-1)]
+    while len(turnir) <= len(population):
+        f_o_ind = random.randint(0, len(population)-1)
+        f_o = population[f_o_ind]
+        s_o_ind = random.randint(0, len(population)-1)
+        while f_o_ind == s_o_ind:
+            s_o_ind = random.randint(0, len(population)-1)
+        s_o = population[s_o_ind]
         if f_o.cur_err < s_o.cur_err:
-            turnir.append(f_o)
+            turnir.append((f_o_ind, f_o))
         else:
-            turnir.append(s_o)
+            turnir.append((s_o_ind, s_o))
 
-    f_parent = turnir[random.randint(0, len(turnir) - 1)]
-    s_parent = turnir[random.randint(0, len(turnir) - 1)]
+    f_parent = random.randint(0, len(turnir) - 1)
+    s_parent = random.randint(0, len(turnir) - 1)
     while f_parent == s_parent:
-        s_parent = turnir[random.randint(0, len(turnir) - 1)]
+        s_parent = random.randint(0, len(turnir) - 1)
 
-    new1, new2 = crossover(f_parent, s_parent)
+    new1, new2 = crossover(turnir[f_parent][1], turnir[s_parent][1])
     new1.mutate()
     new2.mutate()
-    new1.cur_err = EngFunc.err(new1.value_as_xy()[0], new1.value_as_xy()[1])
-    new2.cur_err = EngFunc.err(new2.value_as_xy()[0], new2.value_as_xy()[1])
-
+    n1xy = new1.value_as_xy()
+    new1.cur_err = EngFunc.err(n1xy[0], n1xy[1])
+    n2xy = new2.value_as_xy()
+    new2.cur_err = EngFunc.err(n2xy[0], n2xy[1])
+    # population[turnir[f_parent][0]] = new1
+    # population[turnir[s_parent][0]] = new2
     population.append(new1)
     population.append(new2)
+
     population.sort(key=lambda x : x.cur_err)
 
-    population = population[:population_size-1]
+    population = population[:population_size]
 
     best_err = population[0].cur_err
     counter += 1
 
 print('-------')
-print('pop #' + str(counter), 'err:', population[0].cur_err)
+print('pop #' + str(counter), 'err: {:.3},'.format(population[0].cur_err), '{:.3}%'.format((population[0].cur_err/upper_border)* 100))
