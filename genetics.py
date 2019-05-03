@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from math import sin, sqrt
 import random
 
@@ -71,54 +72,63 @@ for i in range(population_size):
 print(EngFunc.value(512, 404.2319))
 
 turnir_size = 2
-steps = 100000
+steps = 10000
 counter = 0
 best_err = 99999
 okey_err = upper_border / 100
+err_arr = []
 while best_err > okey_err and counter < steps:
     for el in population:
         x, y = el.value_as_xy()
         el.cur_err = EngFunc.err(x, y)
     population.sort(key=lambda x : x.cur_err)
     if counter % 100 == 0:
+        err_arr.append(population[0].cur_err)
         print('pop #' + str(counter), 'lowest err: {:.5}'.format(population[0].cur_err))
 
-    turnir = []
-    while len(turnir) <= len(population):
-        f_o_ind = random.randint(0, len(population)-1)
-        f_o = population[f_o_ind]
-        s_o_ind = random.randint(0, len(population)-1)
-        while f_o_ind == s_o_ind:
-            s_o_ind = random.randint(0, len(population)-1)
-        s_o = population[s_o_ind]
-        if f_o.cur_err < s_o.cur_err:
-            turnir.append((f_o_ind, f_o))
-        else:
-            turnir.append((s_o_ind, s_o))
+    mean_prisp = 0
+    for el in population:
+        mean_prisp += el.cur_err
+    mean_prisp /= len(population)
 
-    f_parent = random.randint(0, len(turnir) - 1)
-    s_parent = random.randint(0, len(turnir) - 1)
+    prop_tmp = []
+    for el in population:
+        el_prisp = el.cur_err/mean_prisp
+        cel = int(el_prisp // mean_prisp)
+        drob = el_prisp % mean_prisp
+        for _ in range(cel):
+            prop_tmp.append((population.index(el), el))
+        r = random.random()
+        if r < drob:
+            # prop_tmp.append(el)
+            prop_tmp.append((population.index(el), el))
+
+    f_parent = random.randint(0, len(prop_tmp) - 1)
+    s_parent = random.randint(0, len(prop_tmp) - 1)
     while f_parent == s_parent:
-        s_parent = random.randint(0, len(turnir) - 1)
+        s_parent = random.randint(0, len(prop_tmp) - 1)
 
-    new1, new2 = crossover(turnir[f_parent][1], turnir[s_parent][1])
+    new1, new2 = crossover(prop_tmp[f_parent][1], prop_tmp[s_parent][1])
     new1.mutate()
     new2.mutate()
     n1xy = new1.value_as_xy()
     new1.cur_err = EngFunc.err(n1xy[0], n1xy[1])
     n2xy = new2.value_as_xy()
     new2.cur_err = EngFunc.err(n2xy[0], n2xy[1])
-    # population[turnir[f_parent][0]] = new1
-    # population[turnir[s_parent][0]] = new2
-    population.append(new1)
-    population.append(new2)
+    population[prop_tmp[f_parent][0]] = new1
+    population[prop_tmp[s_parent][0]] = new2
+    # population.append(new1)
+    # population.append(new2)
 
     population.sort(key=lambda x : x.cur_err)
 
-    population = population[:population_size]
+    # population = population[:population_size]
 
     best_err = population[0].cur_err
     counter += 1
 
 print('-------')
 print('pop #' + str(counter), 'err: {:.3},'.format(population[0].cur_err), '{:.3}%'.format((population[0].cur_err/upper_border)* 100))
+
+plt.plot(err_arr)
+plt.show()
