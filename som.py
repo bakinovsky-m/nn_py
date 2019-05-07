@@ -18,7 +18,7 @@ class Node:
 
         w = []
         for _ in range(dim):
-            w.append(random.random())
+            w.append(random.uniform(-1, 1))
         self.w = np.array(w)
 
     def dist(self, dot):
@@ -63,21 +63,21 @@ class SOM:
             bmu_dist = bmu.dist(dot)
 
             ns = np.ravel(self.nodes)
-            start = time.time()
+            # start = time.time()
             for n in ns:
                 dist = n.dist(dot)
                 if dist < bmu_dist:
                     bmu = n
                     bmu_dist = dist
-            end = time.time()
-            print('bmu', end-start)
+            # end = time.time()
+            # print('bmu', end-start)
 
-            start = time.time()
+            # start = time.time()
             for n in np.ravel(self.nodes):
                 hij = np.exp(-((n.w-bmu.w)**2)/cur_sigma)
                 n.w = n.w + cur_nu * hij * (dot.c - n.w)
-            end = time.time()
-            print('wei', end-start)
+            # end = time.time()
+            # print('wei', end-start)
             bmu.w = bmu.w + cur_nu * (dot.c - bmu.w)
 
         self.train_number += 1
@@ -85,15 +85,21 @@ class SOM:
     def sigma(self):
         sigma0 = 1
         const = 10
-        return sigma0 * np.exp(-(self.train_number/const))
+        a = self.train_number/const
+        if a > 10:
+            a = 10
+        return sigma0 * np.exp(-(a))
 
     def nu(self):
         sigma0 = 1
-        const = 200
-        return sigma0 * np.exp(-(self.train_number/const))
+        const = 2000
+        a = self.train_number/const
+        if a > 10:
+            a = 10
+        return sigma0 * np.exp(-(a))
 
-COLS = 100
-ROWS = 100
+COLS = 10
+ROWS = 10
 s = SOM(ROWS,COLS,2)
 
 pygame.init()
@@ -146,14 +152,14 @@ while running:
                 # print('training')
                 # for _ in range(100):
                     # s.train(dataset)
-    if counter % 10 == 0:
+    if counter % 100 == 0:
         print("counter", counter)
         screen.fill((0,0,0))
         draw_dataset(screen, dataset)
         draw_som(screen, s)
         pygame.display.update()
-    start = time.time()
+    # start = time.time()
     s.train(dataset)
-    end = time.time()
-    print('training', end - start)
+    # end = time.time()
+    # print('training', end - start)
     counter += 1
