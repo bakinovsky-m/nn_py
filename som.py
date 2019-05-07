@@ -158,6 +158,18 @@ while running:
         draw_dataset(screen, dataset)
         draw_som(screen, s)
         pygame.display.update()
+    if counter == 0:
+        pygame.image.save(screen, "0_iter.png")
+    if counter == 100:
+        pygame.image.save(screen, "100_iter.png")
+    if counter == 1000:
+        pygame.image.save(screen, "1000_iter.png")
+    if counter == 5000:
+        pygame.image.save(screen, "5000_iter.png")
+    if counter == 10000:
+        pygame.image.save(screen, "10000_iter.png")
+    if counter == 15000:
+        pygame.image.save(screen, "15000_iter.png")
     # start = time.time()
     s.train(dataset)
     # end = time.time()
