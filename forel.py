@@ -2,6 +2,7 @@ import csv
 import numpy as np
 import random
 import pygame
+from sklearn import metrics
 WINDOW_W=1000
 WINDOW_H=1000
 
@@ -17,8 +18,9 @@ def draw_dataset(screen, dataset):
 
 class Dot:
     def __init__(self, cluster, coords):
-        self.cluster = cluster
+        self.cluster = int(cluster)
         self.c = np.array(coords)
+        self.pred_cluster = -1
 
 dataset = []
 with open('2d_dataset.csv') as csvf:
@@ -28,6 +30,7 @@ with open('2d_dataset.csv') as csvf:
         coords = [float(c) for c in row[1:-1]]
         dataset.append(Dot(cluster, coords))
 dataset = np.array(dataset)
+dataset_clusters = [x.cluster for x in dataset]
 
 clusters = {}
 
@@ -38,7 +41,8 @@ screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
 FPS=15
 clock = pygame.time.Clock()
 running = True
-
+cluster_no = 0
+pred_dataset = []
 while running:
     for e in pygame.event.get():
         if e.type == pygame.QUIT:
@@ -78,7 +82,6 @@ while running:
         draw_dataset(screen, dataset)
         ind = 0
         for d in dataset:
-            # dist = np.linalg.norm(cur_d.c - d.c)
             if center == None:
                 dist = np.linalg.norm(cur_d.c - d.c)
             else:
@@ -86,11 +89,9 @@ while running:
             if dist <= R:
                 neibs[ind] = d
             ind += 1
-        # print('neibs', len(neibs), 'are here')
 
         for _,v in neibs.items():
             x,y = toc_ds(v.c[0], v.c[1])
-            # print(x,y)
             pygame.draw.circle(screen, (255,0,0), (x,y), 3)
 
         indexes = [k for k,v in neibs.items()]
@@ -114,8 +115,16 @@ while running:
 
         pygame.display.update()
 
+    for _,n in neibs_to_delete.items():
+        n.pred_cluster = cluster_no
+    cluster_no += 1
     clusters[center] = neibs_to_delete
-    # print(clusters)
+    pred_dataset += [x.pred_cluster for k,x in neibs_to_delete.items()]
     to_delete = [ind for ind, _ in neibs_to_delete.items()]
-    # print(to_delete)
     dataset = np.delete(dataset, to_delete)
+
+
+print('Adjusted Rand score:', metrics.adjusted_rand_score(dataset_clusters, pred_dataset))
+print('Mutual Information based score:', metrics.adjusted_mutual_info_score(dataset_clusters, pred_dataset))
+print('V-measure score:', metrics.v_measure_score(dataset_clusters, pred_dataset))
+print('Fowlkes-Mallows score:', metrics.fowlkes_mallows_score(dataset_clusters, pred_dataset))
