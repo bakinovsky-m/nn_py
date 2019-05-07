@@ -1,146 +1,159 @@
 import csv
+import pygame
 import random
-import matplotlib.pyplot as plt
-from math import exp
 import numpy as np
+import time
+
+WINDOW_W=1000
+WINDOW_H=1000
 
 class Dot:
     def __init__(self, cluster, coords):
         self.cluster = cluster
-
-        self.coords = []
-        for coord in coords:
-            coord = float(coord)
-            self.coords.append(coord)
-
-        self.dim = len(coords)
+        self.c = np.array(coords)
 
 class Node:
-    def __init__(self, dim, xy):
-        m = []
+    def __init__(self, xy, dim):
+        self.c = np.array(xy)
+
+        w = []
         for _ in range(dim):
-            m.append(random.random())
-        self.m = np.array(m)
-        self.r = []
+            w.append(random.random())
+        self.w = np.array(w)
 
-        for el in xy:
-            self.r.append(el)
-
-        self.dim = dim
-
-    def dist_to_dot(self, dot):
-        res = 0
-        for i in range(self.dim):
-            res += (dot.coords[i] - self.m[i]) ** 2
-        return res
+    def dist(self, dot):
+        return np.linalg.norm(self.w - dot.c)
 
     def dist_to_node(self, node):
-        res = 0
-        for i in range(self.dim):
-            res += (node.m[i] - self.m[i]) ** 2
-        return res
+        return np.linalg.norm(self.w - node.w)
 
-def alpha(t):
-    return 1/((t+1))
-    # return 1/((t+1)**(1/4))
+    def __str__(self):
+        return "({},{}):{}".format(self.c[0], self.c[1],self.w)
 
-def gamma(t):
-    return 1/((t+1))
-    # return 1/((t+1)**(1/4))
-
-def hci(t, ri, rc):
-    dist = ri.dist_to_node(rc)
-    # print(dist)
-    if dist <= 1.5:
-        return alpha(t)
-    # if norm <= 1:
-    # return 0
-    norm = ri.dist_to_node(rc) ** 2
-    return alpha(t) * exp(- (norm)/(2*(gamma(t)**2)))
+    def __repr__(self):
+        return self.__str__()
 
 class SOM:
-    def __init__(self, dim, node_count):
-        self.nodes = []
+    def __init__(self, nrows, ncols, dim):
+        nodes = []
 
         cur_x = 0
         cur_y = 0
+        for r in range(nrows):
+            new_row = []
+            for c in range(ncols):
+                new_row.append(Node((cur_x, cur_y), dim))
+                cur_x += 1
+            nodes.append(new_row)
+            cur_x = 0
+            cur_y += 1
 
-        self.nodes_map = np.zeros((node_count, node_count), Node)
-        for i in range(0, node_count):
-            for j in range(0, node_count):
-                self.nodes.append(Node(dim, (cur_x, cur_y)))
-                self.nodes_map[i][j] = Node(dim, (cur_x, cur_y))
-                cur_y += 1
-            cur_y = 0
-            cur_x += 1
-        self.dists = np.zeros((node_count*2, node_count*2))
+        self.nodes = np.array(nodes)
 
-    def train(self, dots, iter_no):
-        ind = random.randint(0, len(dots) - 1)
-        dot = dots[ind]
-        winner = self.nodes[random.randint(0, len(self.nodes) - 1)]
-        winner_dist = 99999
+        self.train_number = 1
 
-        for n in self.nodes:
-            if n.dist_to_dot(dot) <= winner_dist:
-                winner = n
+    def train(self, dataset):
+        cur_sigma = self.sigma()
+        cur_nu = self.nu()
+        cur_sigma = (2*cur_sigma**2)
+        for _ in range(1):
 
-        # for n in self.nodes:
-        for k in self.nodes_map:
-            for n in k:
-                h = hci(iter_no, winner, n)
-                # for i in range(n.dim):
-                    # n.m[i] += h * dot.coords[i] - n.m[i]
-                n.m = n.m + h * (dot.coords - n.m)
+            dot = np.random.choice(dataset)
+            bmu = np.random.choice(np.ravel(self.nodes))
+            bmu_dist = bmu.dist(dot)
 
-    def calc_dists(self):
-        # old_dists = self.dists
-        for i in range(len(self.nodes_map[0])):
-            for j in range(len(self.nodes_map[0])):
-                n1 = self.nodes_map[i][j]
-                neib = {'up':None, 'bottom':None, 'left':None, 'right':None}
-                if i != 0:
-                    neib['left'] = self.nodes_map[i-1][j]
-                    dist = n1.dist_to_node(neib['left'])
-                    # print(dist)
-                    self.dists[i*2-1][j*2] = dist
-                if j != 0:
-                    neib['up'] = self.nodes_map[i][j-1]
-                    self.dists[i*2][j*2-1] = n1.dist_to_node(neib['up'])
-                if i != len(self.nodes_map[0])-1:
-                    neib['right'] = self.nodes_map[i+1][j]
-                    self.dists[i*2+1][j*2] = n1.dist_to_node(neib['right'])
-                if j != len(self.nodes_map[0])-1:
-                    neib['bottom'] = self.nodes_map[i][j+1]
-                    self.dists[i*2][j*2+1] = n1.dist_to_node(neib['bottom'])
-        # diffs = old_dists - self.dists
-        # print(diffs)
-        return self.dists
+            ns = np.ravel(self.nodes)
+            start = time.time()
+            for n in ns:
+                dist = n.dist(dot)
+                if dist < bmu_dist:
+                    bmu = n
+                    bmu_dist = dist
+            end = time.time()
+            print('bmu', end-start)
 
-dots = []
+            start = time.time()
+            for n in np.ravel(self.nodes):
+                hij = np.exp(-((n.w-bmu.w)**2)/cur_sigma)
+                n.w = n.w + cur_nu * hij * (dot.c - n.w)
+            end = time.time()
+            print('wei', end-start)
+            bmu.w = bmu.w + cur_nu * (dot.c - bmu.w)
 
-with open('dataset.csv') as csvf: 
-    reader = csv.reader(csvf) 
-    for row in reader: 
-        coords = row[1:-1]
-        dots.append(Dot(row[0], coords))
+        self.train_number += 1
 
-NODE_COUNT = 10
-s = SOM(dots[0].dim, NODE_COUNT)
+    def sigma(self):
+        sigma0 = 1
+        const = 10
+        return sigma0 * np.exp(-(self.train_number/const))
 
-x_old = []
-y_old = []
-for n in s.nodes:
-    x_old.append(n.r[0]*2+0.5)
-    y_old.append(n.r[1]*2+0.5)
+    def nu(self):
+        sigma0 = 1
+        const = 200
+        return sigma0 * np.exp(-(self.train_number/const))
 
-for i in range(200):
-    print('new loop', i)
-    s.train(dots, i)
-    dists = s.calc_dists()
-    plt.pcolormesh(dists)
-    plt.plot(x_old, y_old, 'ro')
-    # if i % 100 == 0:
-    plt.pause(0.0001)
+COLS = 100
+ROWS = 100
+s = SOM(ROWS,COLS,2)
 
-plt.show()
+pygame.init()
+screen = pygame.display.set_mode((WINDOW_W, WINDOW_H))
+clock = pygame.time.Clock()
+FPS = 5
+
+def toc(x, y):
+    x1 = int(x * int(WINDOW_W/(ROWS-1)))
+    y1 = int(y * int(WINDOW_H/(COLS-1)))
+    return (x1, y1)
+
+def toc_ds(x,y):
+    x1 = int(x * int(WINDOW_W/2) + int(WINDOW_W/2))
+    y1 = int(y * int(WINDOW_H/2) + int(WINDOW_H/2))
+    return (x1, y1)
+
+def draw_som(screen, som):
+    rows = len(s.nodes)
+    cols = len(s.nodes[0])
+    for r in range(rows):
+        for c in range(cols):
+            # pygame.draw.circle(screen, pygame.Color(255,255,255), toc(r,c), 3)
+            node = s.nodes[r,c]
+            pygame.draw.circle(screen, pygame.Color(255,0,0), toc_ds(node.w[0],node.w[1]), 3)
+
+dataset = []
+with open('2d_dataset.csv') as csvf:
+    reader = csv.reader(csvf)
+    for row in reader:
+        cluster = row[0]
+        coords = [float(c) for c in row[1:-1]]
+        dataset.append(Dot(cluster, coords))
+    print(len(dataset))
+
+def draw_dataset(screen, dataset):
+    for dot in dataset:
+        x,y = toc_ds(dot.c[0], dot.c[1])
+        pygame.draw.circle(screen, pygame.Color(0,125,125), (x,y), 3)
+
+running = True
+counter = 0
+while running:
+    # clock.tick(FPS)
+    for e in pygame.event.get():
+        if e.type == pygame.QUIT:
+            running = False
+        # if e.type == pygame.KEYDOWN:
+            # if e.key == pygame.K_RETURN:
+                # print('training')
+                # for _ in range(100):
+                    # s.train(dataset)
+    if counter % 10 == 0:
+        print("counter", counter)
+        screen.fill((0,0,0))
+        draw_dataset(screen, dataset)
+        draw_som(screen, s)
+        pygame.display.update()
+    start = time.time()
+    s.train(dataset)
+    end = time.time()
+    print('training', end - start)
+    counter += 1
