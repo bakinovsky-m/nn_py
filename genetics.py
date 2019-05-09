@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from gen_funcs import EngFunc, SphereFunc, ShapherN2Func, RosenbrockFunc, BillFunc, CamelFunc, BootFunc
 import random
 
-MUTATION_RATE = 0.3
+MUTATION_RATE = 0.8
 ACCURACY = 2
 
 class O:
@@ -52,16 +52,17 @@ class O:
         return res
 
     def mutate(self):
-        # for _ in range(1):
-            # should_mutate = random.random()
-            # if should_mutate <= MUTATION_RATE:
-                # gen_ind = random.randint(0, len(self.genom) - 1)
-                # self.genom[gen_ind] = abs(self.genom[gen_ind] - 1)
-        for i in range(len(self.genom)):
-            sm = random.random()
-            if sm <= MUTATION_RATE:
-                i = random.randint(0, len(self.genom) - 1)
-                self.genom[i] = abs(self.genom[i] - 1)
+        should_mutate = random.random()
+        if should_mutate <= MUTATION_RATE:
+            gen_ind = random.randint(0, len(self.genom) - 1)
+            self.genom[gen_ind] = abs(self.genom[gen_ind] - 1)
+
+    # def mutate_for_genitor(self):
+    #     for i in range(len(self.genom)):
+    #         sm = random.random()
+    #         if sm <= MUTATION_RATE:
+    #             i = random.randint(0, len(self.genom) - 1)
+    #             self.genom[i] = abs(self.genom[i] - 1)
 
 
     def prisp(self):
@@ -115,10 +116,10 @@ def genitor_crossover(o1, o2):
     new.genom = o1_gene + o2_gene
     return new
 
-# FUNC = EngFunc() # bad
+# FUNC = EngFunc() # good
 # FUNC = SphereFunc() # good
-# FUNC = ShapherN2Func()
-FUNC = RosenbrockFunc()
+FUNC = ShapherN2Func() # good
+# FUNC = RosenbrockFunc() # bad
 # FUNC = BillFunc()
 # FUNC = CamelFunc()
 # FUNC = BootFunc()
@@ -127,7 +128,7 @@ population_size = 25
 upper_border = FUNC.upper_border
 genom_size = len(bin(upper_border)) - 2 
 genom_size = (genom_size+ACCURACY)*2
-steps = 500000
+steps = 50000
 okey_err = upper_border / 1000
 err_arr_classic = []
 err_arr_genitor = []
@@ -149,42 +150,35 @@ def classic(population):
             if counter % 100 == 0:
                 print_step(counter, population)
 
-
-        mean_prisp = 0
+        # population.sort(key=lambda x: x.prisp(), reverse=True)
+        population.sort(key=lambda x: x.prisp())
+        cur_p = 0
+        pr = {}
         for el in population:
-            mean_prisp += el.prisp()
-        # mean_prisp /= len(population)
+            v = cur_p + el.prisp()/sum([x.prisp() for x in population])
+            pr[v] = (population.index(el),el)
+            cur_p = v
+        # print('pr', [k for k,v in pr.items()])
 
-        prop_tmp = []
-        for el in population:
-            to_append = []
-            el_prisp = el.prisp()
-            cel = int((el_prisp // mean_prisp))
-            drob = (el_prisp % mean_prisp) / mean_prisp
-            for _ in range(cel):
-                to_append.append((population.index(el), el))
+        i1 = random.randint(0, len(population)-1)
+        i2 = random.randint(0, len(population)-1)
+        while i1 == i2:
+            i2 = random.randint(0, len(population)-1)
+
+        parents = [(i1,population[i1]),(i2,population[i2])]
+        for i in range(2):
             r = random.random()
-            if r < drob:
-                to_append.append((population.index(el), el))
-            prop_tmp += to_append
-        if len(prop_tmp) < 2:
-            r1 = random.randint(0, len(population)-1)
-            prop_tmp.append((r1, population[r1]))
-            r2 = random.randint(0, len(population)-1)
-            prop_tmp.append((r2, population[r2]))
+            for p,el in pr.items():
+                if r > p:
+                    parents[i] = el
+        new1, new2 = classic_crossover(parents[0][1], parents[1][1], genom_size)
 
-        f_parent = random.randint(0, len(prop_tmp) - 1)
-        s_parent = random.randint(0, len(prop_tmp) - 1)
-        while f_parent == s_parent:
-            s_parent = random.randint(0, len(prop_tmp) - 1)
-
-        new1, new2 = classic_crossover(prop_tmp[f_parent][1], prop_tmp[s_parent][1], genom_size)
         n1xy = new1.value_as_xy()
         new1.cur_err = FUNC.err(n1xy[0], n1xy[1])
         n2xy = new2.value_as_xy()
         new2.cur_err = FUNC.err(n2xy[0], n2xy[1])
-        population[prop_tmp[f_parent][0]] = new1
-        population[prop_tmp[s_parent][0]] = new2
+        population[parents[0][0]] = new1
+        population[parents[1][0]] = new2
 
         population.sort(key=lambda x : x.cur_err)
 
@@ -230,6 +224,7 @@ def run(methods):
 
         for i in range(population_size):
             population.append(O(genom_size))
+        print("CLASSIC")
         counter = classic(population)
         ret.append('classic')
     if 'genitor' in methods:
@@ -237,6 +232,7 @@ def run(methods):
 
         for i in range(population_size):
             population.append(O(genom_size))
+        print("GENITOR")
         counter = genitor(population)
         ret.append('genitor')
     if len(methods) == 0:
@@ -253,7 +249,7 @@ def run(methods):
     print('with x,y: ', best_o_x, best_o_y)
     return ret
 
-methods = ['classic']
+# methods = ['classic']
 # methods = ['genitor']
 methods = ['classic', 'genitor']
 pl = run(methods)
@@ -261,7 +257,6 @@ print(pl)
 # pl = run(('genitor'))
 if len(pl) > 0:
     if 'classic' in pl:
-        print('asdasd', len(err_arr_classic))
         asd = 0
         qwe = []
         for i in range(len(err_arr_classic)):

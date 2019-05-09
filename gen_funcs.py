@@ -57,7 +57,7 @@ class RosenbrockFunc:
 
 class BillFunc:
     def __init__(self):
-        self.upper_border = 4
+        self.upper_border = 5
     def value(self, x, y):
         r1 = (1.5 - x + x*y)**2
         r2 = (2.25 - x + x*(y**2))**2
