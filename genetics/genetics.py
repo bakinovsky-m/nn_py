@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 from gen_funcs import EngFunc, SphereFunc, ShapherN2Func, RosenbrockFunc, BillFunc, CamelFunc, BootFunc
 import random
 
-MUTATION_RATE = 0.8
-ACCURACY = 2
+MUTATION_RATE = .9
+ACCURACY = 4
 
 class O:
     def __init__(self, size):
-        self.cur_err = 0
+        # self.cur_err = 0
+        self.cur_val = 99999
 
         self.genom = []
 
@@ -57,18 +58,17 @@ class O:
             gen_ind = random.randint(0, len(self.genom) - 1)
             self.genom[gen_ind] = abs(self.genom[gen_ind] - 1)
 
-    # def mutate_for_genitor(self):
-    #     for i in range(len(self.genom)):
-    #         sm = random.random()
-    #         if sm <= MUTATION_RATE:
-    #             i = random.randint(0, len(self.genom) - 1)
-    #             self.genom[i] = abs(self.genom[i] - 1)
-
-
     def prisp(self):
         if abs(self.cur_err)<0.00000000000001:
             return 1
         return 1/self.cur_err
+
+    def vprisp(self):
+        # return -(self.cur_val)
+        if self.cur_val >= 0:
+            return 1/self.cur_val
+        else:
+            return 1/(-self.cur_val)
 
 def classic_crossover(o1, o2, genom_size):
     cut_point_ind = random.randint(1, len(o1.genom) - 1)
@@ -99,66 +99,52 @@ def classic_crossover(o1, o2, genom_size):
 
 def genitor_crossover(o1, o2):
     cut_point_ind1 = random.randint(0, len(o1.genom) - 1)
-    # cut_point_ind2 = random.randint(0, len(o1.genom) - 1)
-
     new = O(len(o1.genom))
-
-    # if cut_point_ind2 < cut_point_ind1:
-        # cut_point_ind1, cut_point_ind2 = cut_point_ind2, cut_point_ind1
-
-    # o1_gene = o1.genom[:cut_point_ind1]
-    # o2_gene = o2.genom[cut_point_ind1:cut_point_ind2]
-    # o3_gene = o1.genom[cut_point_ind2:]
     o1_gene = o1.genom[:cut_point_ind1]
     o2_gene = o2.genom[cut_point_ind1:]
 
-    # new.genom = o1_gene + o2_gene + o3_gene
     new.genom = o1_gene + o2_gene
     return new
 
-# FUNC = EngFunc() # good
-# FUNC = SphereFunc() # good
-FUNC = ShapherN2Func() # good
-# FUNC = RosenbrockFunc() # bad
-# FUNC = BillFunc()
+# FUNC = SphereFunc()
 # FUNC = CamelFunc()
 # FUNC = BootFunc()
+FUNC = RosenbrockFunc()
 
 population_size = 25
 upper_border = FUNC.upper_border
 genom_size = len(bin(upper_border)) - 2 
 genom_size = (genom_size+ACCURACY)*2
-steps = 50000
-okey_err = upper_border / 1000
-err_arr_classic = []
-err_arr_genitor = []
+steps = 1000
+val_arr_classic = []
+val_arr_genitor = []
 
-def print_step(counter, population):
+def print_step(counter, population, err_counter):
     x,y = population[0].value_as_xy()
-    print('pop #' + str(counter), 'err: {:.5}'.format(population[0].cur_err),'{:.3}%'.format((population[0].cur_err/upper_border)* 100), "({:.3},{:.3})".format(x,y))
+    print('pop #' + str(counter), 'val #{}: {:.5}'.format(err_counter, population[0].cur_val), "({:.5},{:.5})".format(x,y))
 
 def classic(population):
     counter = 0
-    best_err = 99999
-    while best_err > okey_err and counter < steps:
-    # while best_err > okey_err:
+    err_counter = 0
+    best_val = 99999
+    # while best_err > okey_err and err_counter < steps:
+    while err_counter < steps:
         for el in population:
             x, y = el.value_as_xy()
-            el.cur_err = FUNC.err(x, y)
-        if counter % 10 == 0:
-            err_arr_classic.append(population[0].cur_err)
-            if counter % 100 == 0:
-                print_step(counter, population)
+            el.cur_val = FUNC.value(x,y)
+        # if counter % 10 == 0:
+        population.sort(key=lambda x: x.cur_val)
+        val_arr_classic.append(population[0].cur_val)
+        if counter % 100 == 0:
+            print_step(counter, population, err_counter)
 
-        # population.sort(key=lambda x: x.prisp(), reverse=True)
-        population.sort(key=lambda x: x.prisp())
+        population.sort(key=lambda x: x.vprisp())
         cur_p = 0
         pr = {}
         for el in population:
-            v = cur_p + el.prisp()/sum([x.prisp() for x in population])
+            v = cur_p + el.vprisp()/sum([x.vprisp() for x in population])
             pr[v] = (population.index(el),el)
             cur_p = v
-        # print('pr', [k for k,v in pr.items()])
 
         i1 = random.randint(0, len(population)-1)
         i2 = random.randint(0, len(population)-1)
@@ -174,31 +160,38 @@ def classic(population):
         new1, new2 = classic_crossover(parents[0][1], parents[1][1], genom_size)
 
         n1xy = new1.value_as_xy()
-        new1.cur_err = FUNC.err(n1xy[0], n1xy[1])
+        new1.cur_val = FUNC.value(n1xy[0], n1xy[1])
         n2xy = new2.value_as_xy()
-        new2.cur_err = FUNC.err(n2xy[0], n2xy[1])
+        new2.cur_val = FUNC.value(n2xy[0], n2xy[1])
         population[parents[0][0]] = new1
         population[parents[1][0]] = new2
 
-        population.sort(key=lambda x : x.cur_err)
+        population.sort(key=lambda x: x.cur_val)
 
-        best_err = population[0].cur_err
+        tmp_best_val = population[0].cur_val
+        if tmp_best_val > best_val or abs(tmp_best_val - best_val) < 0.00001:
+            err_counter +=1
+        else:
+            err_counter = 0
+            print_step(counter, population, err_counter)
+            best_val = tmp_best_val
         counter += 1
-    err_arr_classic.append(population[0].cur_err)
+    val_arr_classic.append(population[0].cur_val)
     return counter
 
 def genitor(population):
     counter = 0
-    best_err = 99999
-    while best_err > okey_err and counter < steps:
+    err_counter = 0
+    best_val = 99999
+    while err_counter < steps:
         for el in population:
             x, y = el.value_as_xy()
-            el.cur_err = FUNC.err(x, y)
-        population.sort(key=lambda x : x.cur_err)
-        if counter % 10 == 0:
-            err_arr_genitor.append(population[0].cur_err)
-            if counter % 100 == 0:
-                print_step(counter, population)
+            el.cur_val = FUNC.value(x,y)
+        population.sort(key=lambda x:x.cur_val)
+        # if counter % 10 == 0:
+        val_arr_genitor.append(population[0].cur_val)
+        if counter % 100 == 0:
+            print_step(counter, population, err_counter)
 
         f_parent_ind = random.randint(0, len(population) - 1)
         s_parent_ind = random.randint(0, len(population) - 1)
@@ -206,14 +199,19 @@ def genitor(population):
         new_o = genitor_crossover(population[f_parent_ind], population[s_parent_ind])
         new_o.mutate()
         x,y = new_o.value_as_xy()
-        new_o.cur_err = FUNC.err(x, y)
-        # population.sort(key=lambda x : x.cur_err)
+        new_o.cur_val = FUNC.value(x,y)
 
         population[-1] = new_o
 
-        best_err = population[0].cur_err
+        tmp_best_val = population[0].cur_val
+        if tmp_best_val > best_val or abs(tmp_best_val - best_val) < 0.00001:
+            err_counter +=1
+        else:
+            err_counter = 0
+            print_step(counter, population, err_counter)
+            best_val = tmp_best_val
         counter += 1
-    err_arr_genitor.append(population[0].cur_err)
+    val_arr_genitor.append(population[0].cur_val)
     return counter
 
 def run(methods):
@@ -226,6 +224,13 @@ def run(methods):
             population.append(O(genom_size))
         print("CLASSIC")
         counter = classic(population)
+        print('-------')
+        print('pop #' + str(counter), 'err: {:.3}'.format(population[0].cur_val))
+        print('true best value', FUNC.true_value())
+        best_o_x, best_o_y = population[0].value_as_xy()
+
+        print('gene best value', FUNC.value(best_o_x, best_o_y))
+        print('with x,y: ', best_o_x, best_o_y)
         ret.append('classic')
     if 'genitor' in methods:
         population = []
@@ -235,18 +240,18 @@ def run(methods):
         print("GENITOR")
         counter = genitor(population)
         ret.append('genitor')
+        print('-------')
+        print('pop #' + str(counter), 'err: {:.3}'.format(population[0].cur_val))
+        print('true best value', FUNC.true_value())
+        best_o_x, best_o_y = population[0].value_as_xy()
+
+        print('gene best value', FUNC.value(best_o_x, best_o_y))
+        print('with x,y: ', best_o_x, best_o_y)
     if len(methods) == 0:
         print('шо за метод')
         counter = 0
         return []
 
-    print('-------')
-    print('pop #' + str(counter), 'err: {:.3},'.format(population[0].cur_err), '{:.3}%'.format((population[0].cur_err/upper_border) * 100))
-    print('true best value', FUNC.true_value())
-    best_o_x, best_o_y = population[0].value_as_xy()
-
-    print('gene best value', FUNC.value(best_o_x, best_o_y))
-    print('with x,y: ', best_o_x, best_o_y)
     return ret
 
 # methods = ['classic']
@@ -259,19 +264,22 @@ if len(pl) > 0:
     if 'classic' in pl:
         asd = 0
         qwe = []
-        for i in range(len(err_arr_classic)):
-            asd += err_arr_classic[i]
+        for i in range(len(val_arr_classic)):
+            asd += val_arr_classic[i]
             qwe.append(asd/(i+1))
-        plt.plot(err_arr_classic, 'ro-')
+        plt.title(type(FUNC).__name__ + ", " + 'classic')
+        # plt.plot(err_arr_classic, 'ro-')
+        plt.plot(val_arr_classic, 'r-')
         plt.plot(qwe, 'b-')
     if len(pl) == 2:
         plt.figure()
     if 'genitor' in pl:
         asd = 0
         qwe = []
-        for i in range(len(err_arr_genitor)):
-            asd += err_arr_genitor[i]
+        for i in range(len(val_arr_genitor)):
+            asd += val_arr_genitor[i]
             qwe.append(asd/(i+1))
-        plt.plot(err_arr_genitor, 'go-')
+        plt.title(type(FUNC).__name__ + ', ' + 'genitor')
+        plt.plot(val_arr_genitor, 'g-')
         plt.plot(qwe, 'b-')
 plt.show()

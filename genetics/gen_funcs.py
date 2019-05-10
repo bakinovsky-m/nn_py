@@ -1,7 +1,7 @@
 from math import sin, sqrt
 class EngFunc:
     def __init__(self):
-        self.upper_border = 512
+        self.upper_border = 511
 
     def value(self, x, y):
         sqrt1 = sqrt(abs(x/2 + (y+47)))
