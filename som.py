@@ -3,6 +3,10 @@ import pygame
 import random
 import numpy as np
 import time
+from sklearn import metrics
+from sklearn.cluster import KMeans
+import hexagons
+import matplotlib.pyplot as plt
 
 WINDOW_W=1000
 WINDOW_H=1000
@@ -28,7 +32,7 @@ class Node:
         return np.linalg.norm(self.w - node.w)
 
     def __str__(self):
-        return "({},{}):{}".format(self.c[0], self.c[1],self.w)
+        return "({},{}):{}".format(self.c[0], self.c[1], self.w)
 
     def __repr__(self):
         return self.__str__()
@@ -82,6 +86,35 @@ class SOM:
 
         self.train_number += 1
 
+    def get_cluters(self, dataset, n_classes):
+        nodes = self.nodes.ravel()
+        counts = {node:0 for node in nodes}
+        for p in dataset:
+            d = 9999999
+            cur = -1
+            for w in nodes:
+                dd = w.dist(p)
+                if dd < d:
+                    d = dd
+                    cur = w
+            counts[cur] += 1
+        import operator
+        centers = dict(sorted(counts.items(), key=operator.itemgetter(1), reverse=True)[:3])
+
+        clusters = [-1] * len(dataset)
+        counter = 0
+        for p in dataset:
+            d = 99999
+            cur = -1
+            for c in range(len(centers)):
+                dd = nodes[c].dist(p)
+                if dd < d:
+                    d = dd
+                    cur = c
+            clusters[counter] = cur
+            counter += 1
+        return clusters
+
     def sigma(self):
         sigma0 = 1
         const = 10
@@ -98,8 +131,8 @@ class SOM:
             a = 10
         return sigma0 * np.exp(-(a))
 
-COLS = 10
-ROWS = 10
+COLS = 15
+ROWS = 15
 s = SOM(ROWS,COLS,2)
 
 pygame.init()
@@ -142,6 +175,7 @@ def draw_dataset(screen, dataset):
 
 running = True
 counter = 0
+fig = plt.figure(1)
 while running:
     # clock.tick(FPS)
     for e in pygame.event.get():
@@ -157,21 +191,43 @@ while running:
         screen.fill((0,0,0))
         draw_dataset(screen, dataset)
         draw_som(screen, s)
+        # centers = [[0.1,0.2,0.3]]
+        centers = [x.c for x in s.nodes.ravel()]
+        # weights = [[0.4,.3,.2]]
+        weights = [[(x.w[0]+1)/2, (x.w[1]+1)/2, 0.1] for x in s.nodes.ravel()]
+        # print(weights)
+        hexagons.plot_hex(fig, centers, weights)
+        plt.pause(0.001)
         pygame.display.update()
-    if counter == 0:
-        pygame.image.save(screen, "som_0_iter.png")
-    if counter == 100:
-        pygame.image.save(screen, "som_100_iter.png")
-    if counter == 1000:
-        pygame.image.save(screen, "som_1000_iter.png")
-    if counter == 5000:
-        pygame.image.save(screen, "som_5000_iter.png")
-    if counter == 10000:
-        pygame.image.save(screen, "som_10000_iter.png")
+    # if counter == 0:
+    #     pygame.image.save(screen, "images/som/som_00000_iter.png")
+    # if counter == 100:
+    #     pygame.image.save(screen, "images/som/som_00100_iter.png")
+    # if counter == 1000:
+    #     pygame.image.save(screen, "images/som/som_01000_iter.png")
+    # if counter == 5000:
+    #     pygame.image.save(screen, "images/som/som_05000_iter.png")
+    # if counter == 10000:
+    #     pygame.image.save(screen, "images/som/som_10000_iter.png")
     if counter == 15000:
-        pygame.image.save(screen, "som_15000_iter.png")
+        # pygame.image.save(screen, "images/som/som_15000_iter.png")
+        running = False
     # start = time.time()
     s.train(dataset)
+    # print(s.get_cluters(dataset, 3))
     # end = time.time()
     # print('training', end - start)
     counter += 1
+plt.show()
+# print(s.get_cluters(dataset, 3))
+dataset_clusters = [x.cluster for x in dataset]
+pred_dataset = s.get_cluters(dataset, 3)
+# pred_dataset = [x.w for x in s.nodes.ravel()]
+# kmeans = KMeans(3).fit(pred_dataset)
+# print(kmeans.labels_)
+pred_dataset = np.random.randint(0, 2, size=len(dataset))
+
+print('Adjusted Rand score:', metrics.adjusted_rand_score(dataset_clusters, pred_dataset))
+print('Mutual Information based score:', metrics.adjusted_mutual_info_score(dataset_clusters, pred_dataset))
+print('V-measure score:', metrics.v_measure_score(dataset_clusters, pred_dataset))
+print('Fowlkes-Mallows score:', metrics.fowlkes_mallows_score(dataset_clusters, pred_dataset))
